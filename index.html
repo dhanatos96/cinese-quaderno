@@ -79,6 +79,12 @@ section{margin:0 0 30px;scroll-margin-top:112px}
 .v:active{transform:scale(.98)}
 .v .zh{font-family:var(--zh);font-size:24px;line-height:1.15;display:block}
 .v .py{display:block;font-size:12px;font-weight:600;color:var(--acc);margin-top:3px;line-height:1.3}
+.zht{font-family:var(--zh);color:var(--mute);opacity:.85}
+.v .zht{display:block;font-size:17px;margin-top:2px;line-height:1.15}
+.fr .zht{display:block;font-size:15px;margin-top:2px;line-height:1.3}
+.dia .zht{display:block;font-size:15px;margin-top:2px;line-height:1.3}
+.gp .ex .zht{display:block;font-size:16px;margin-top:2px;line-height:1.3}
+.flash .zht{font-size:.62em;margin-top:6px;display:block}
 .v .it{display:block;font-size:12.5px;color:var(--mute);margin-top:5px;line-height:1.35}
 .v .sp{position:absolute;top:9px;right:9px;width:20px;height:20px;border-radius:50%;background:var(--accSoft);color:var(--acc);display:grid;place-items:center}
 .v .sp svg{width:11px;height:11px}
@@ -334,8 +340,14 @@ applicaPinyin();
 /* Il pinyin di una carta/frase: campo "py" se c'e', altrimenti niente. */
 const pyHTML=(o,cls)=>o&&o.py?`<span class="py${cls?" "+cls:""}">${esc(o.py)}</span>`:"";
 const pyDIV=o=>o&&o.py?`<div class="py">${esc(o.py)}</div>`:"";
+/* Il tradizionale: si mostra SOLO quando e' diverso dal semplificato. La maggior
+   parte dei caratteri coincide, e stampare "你好 / 你好" ovunque sarebbe rumore che
+   abitua l'occhio a saltare il campo invece che a leggerlo. */
+const trad=o=>{const t=o&&o.zh_t?String(o.zh_t).trim():"";return t&&t!==String(o.zh||"").trim()?t:"";};
+const tradHTML=o=>{const t=trad(o);return t?`<span class="zht">${escZh(t)}</span>`:"";};
+const tradDIV=o=>{const t=trad(o);return t?`<div class="zht">${escZh(t)}</div>`:"";};
 /* Le due facce della flashcard. */
-const facciaZh=c=>`<div><div class="zh">${escZh(c.zh)}</div>${pyDIV(c)}</div>`;
+const facciaZh=c=>`<div><div class="zh">${escZh(c.zh)}</div>${tradDIV(c)}${pyDIV(c)}</div>`;
 const facciaIt=c=>`<div class="itx">${esc(c.it||"—")}</div>`;
 
 const sheet=document.getElementById('sheet'),scrim=document.getElementById('scrim');
@@ -367,7 +379,7 @@ async function caricaRipassi(forza){
 
 /* ---------- stash flashcard ---------- */
 let flashStash=null;
-const CAMPI_FLASH="id,lezione_numero,card_n,zh,py,it,tipo,livello,data_lezione,stato,volte_giusta,volte_sbagliata,giuste_di_fila,ultima_revisione";
+const CAMPI_FLASH="id,lezione_numero,card_n,zh,zh_t,py,it,tipo,livello,data_lezione,stato,volte_giusta,volte_sbagliata,giuste_di_fila,ultima_revisione";
 async function caricaFlashcard(forza){
   if(flashStash && !forza) return flashStash;
   const res=await fetch(`${SUPABASE_URL}/rest/v1/flashcard_stash?select=${CAMPI_FLASH}&order=lezione_numero.asc,card_n.asc`,
@@ -798,7 +810,7 @@ function renderGrammatica(grammatica){
     }
     return `<div class="gp">
       <p class="reg">${esc(p.regola)}</p>
-      ${p.esempio_zh?`<div class="ex" data-speak="${escZh(p.esempio_zh)}"><div class="t"><div class="zh">${escZh(p.esempio_zh)}</div>${p.esempio_py?`<div class="py">${esc(p.esempio_py)}</div>`:""}${p.esempio_it?`<div class="it">${esc(p.esempio_it)}</div>`:""}</div><div class="sp">${SP}</div></div>`:""}
+      ${p.esempio_zh?`<div class="ex" data-speak="${escZh(p.esempio_zh)}"><div class="t"><div class="zh">${escZh(p.esempio_zh)}</div>${p.esempio_zh_t&&p.esempio_zh_t!==p.esempio_zh?`<div class="zht">${escZh(p.esempio_zh_t)}</div>`:""}${p.esempio_py?`<div class="py">${esc(p.esempio_py)}</div>`:""}${p.esempio_it?`<div class="it">${esc(p.esempio_it)}</div>`:""}</div><div class="sp">${SP}</div></div>`:""}
       ${p.pronuncia?`<p class="pron">Pronuncia — ${esc(p.pronuncia)}</p>`:""}
     </div>`;
   }).join("");
@@ -835,11 +847,11 @@ function renderLezione(lez){
     <nav class="jump">${ancore.join("")}</nav>
 
     ${vocaboli.length?`<section id="vocaboli"><div class="card"><div class="sh"><h2>Vocabolario</h2><small>tocca per ascoltare</small></div>
-      <div class="voc">${vocaboli.map(v=>`<button class="v" data-speak="${escZh(v.zh)}"><span class="zh">${escZh(v.zh)}</span>${pyHTML(v)}<span class="it">${esc(v.it)}</span><span class="sp">${SP}</span></button>`).join("")}</div>
+      <div class="voc">${vocaboli.map(v=>`<button class="v" data-speak="${escZh(v.zh)}"><span class="zh">${escZh(v.zh)}</span>${tradHTML(v)}${pyHTML(v)}<span class="it">${esc(v.it)}</span><span class="sp">${SP}</span></button>`).join("")}</div>
     </div></section>`:""}
 
     ${frasi.length?`<section id="frasi"><div class="card"><div class="sh"><h2>Frasi comuni</h2><small>tocca per ascoltare</small></div>
-      <div class="fr">${frasi.map(f=>`<button data-speak="${escZh(f.zh)}"><span class="t"><span class="zh">${escZh(f.zh)}</span>${pyHTML(f)}</span><span class="it">${esc(f.it)}</span></button>`).join("")}</div>
+      <div class="fr">${frasi.map(f=>`<button data-speak="${escZh(f.zh)}"><span class="t"><span class="zh">${escZh(f.zh)}</span>${tradHTML(f)}${pyHTML(f)}</span><span class="it">${esc(f.it)}</span></button>`).join("")}</div>
     </div></section>`:""}
 
     ${daRicomporre.length?`<section id="ricomponi"><div class="card"><div class="sh"><h2>Ricomponi la frase</h2><small>tocca i blocchi nell'ordine giusto</small></div>
@@ -863,7 +875,7 @@ function renderLezione(lez){
 
     ${dialogo.length?`<section id="dialogo"><div class="card"><div class="sh"><h2>Dialogo</h2><small>tocca una battuta</small></div>
       <div class="btnrow" style="margin:0 0 14px"><button class="btn" id="play-dialogo">Riproduci tutto</button><button class="btn o" id="hide-it">Nascondi italiano</button><button class="btn o" id="slow-tog">Lento 0.7×</button></div>
-      <div class="dia" id="dia">${dialogo.map((b,i)=>`<button class="b ${b.chi==="studente"?"studente":"altro"}" data-i="${i}"><span class="chi">${b.chi==="studente"?"tu":esc(b.chi)}</span><span class="zh">${escZh(b.zh)}</span>${pyHTML(b)}<span class="it">${esc(b.it)}</span></button>`).join("")}</div>
+      <div class="dia" id="dia">${dialogo.map((b,i)=>`<button class="b ${b.chi==="studente"?"studente":"altro"}" data-i="${i}"><span class="chi">${b.chi==="studente"?"tu":esc(b.chi)}</span><span class="zh">${escZh(b.zh)}</span>${tradHTML(b)}${pyHTML(b)}<span class="it">${esc(b.it)}</span></button>`).join("")}</div>
     </div></section>`:""}
 
     ${mazzo.length?`<section id="flashcard"><div class="card"><div class="sh"><h2>Flashcard</h2><small>tocca la carta per girarla</small></div>
